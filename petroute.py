@@ -1,16 +1,17 @@
 from flask  import Flask,request,jsonify
 from flask_sqlalchemy import SQLAlchemy
 import os
-from marshmallow import Schema, fields
+#from marshmallow import Schema, fields
+from flask_cors import CORS
 
 
 app=Flask(__name__)
+CORS(app)
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:myadmin123*/@localhost/petdb' 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
 
 class Pet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -31,13 +32,13 @@ class Pet(db.Model):
             'status': self.status
         }  
 
-class PetSchema(Schema):
-    id = fields.Integer()
-    name = fields.String()
-    category = fields.String()
-    status = fields.String()
+#class PetSchema(Schema):
+    #id = fields.Integer()
+    #name = fields.String()
+    #category = fields.String()
+    #status = fields.String()
 
-pet_schema = PetSchema(many=True)
+#pet_schema = PetSchema(many=True)
 
 @app.route('/pet',methods=['POST'])
 def add_pet():
@@ -50,6 +51,8 @@ def add_pet():
     db.session.add(new_pet)
     db.session.commit()
     return jsonify({'message': 'Pet added successfully'}), 200
+
+
 
 @app.route('/pet', methods=['GET'])
 def get_all_pets():
@@ -71,40 +74,29 @@ def get_pet(id):
    # db.session.commit()
 
 
+@app.route('/pet/<int:pet_id>', methods=['PUT'])
+def update_pet(pet_id):
+    pet = Pet.query.get(pet_id)
+    if not pet:
+        return jsonify({'error': 'Pet not found'}), 404
 
-@app.route('/pet/<id>', methods=['PUT'])
-def change_pet(id):
-    pet = Pet.query.get(id)
-    if pet is None:
-        return jsonify({'message': 'Pet not found'}), 404
+    data = request.json
+    print("Received JSON payload:", data)  # Print the JSON payload received in the request
 
-    name = request.json['name']
-    category = request.json['category']
-    status = request.json['status']
+   
+    name = data.get('name', pet.name)
+    category = data.get('category', pet.category)
+    status = data.get('status', pet.status)
 
+    
     pet.name = name
     pet.category = category
     pet.status = status
 
     db.session.commit()
 
-    return pet_schema.jsonify(pet)
+    return jsonify({'message': 'Pet updated successfully', 'pet': pet.to_dict()})
 
-
-
-@app.route('/pet/<id>', methods=['POST'])
-def update_pet(id):
-    pet = Pet.query.get(id)
-    if pet is None:
-        return jsonify({'message': 'Pet not found'}), 404
-    
-    
-    pet.name = request.form.get('name', pet.name)
-    pet.category = request.form.get('category', pet.category)
-    pet.status = request.form.get('status', pet.status)
-
-    db.session.commit()
-    return jsonify({'message': 'Pet updated successfully'}), 200
 
 
 @app.route('/pet/<id>', methods=['DELETE'])
@@ -120,4 +112,7 @@ def delete_pet(id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+        
+
 
